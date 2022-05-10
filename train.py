@@ -89,7 +89,7 @@ def main():
     """
     # print model
     # print(animegan.generator)
-    # print(animegan.discriminator)
+    print(animegan.discriminator)
     # random_input = torch.rand(2,3,512,512)
     # print(random_input.shape)
     # generated_image = animegan.generator(random_input)

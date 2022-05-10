@@ -81,11 +81,6 @@ class AnimeGANv2(object) :
         # dataset number? why it is max?
         self.dataset_num = max(self.real_dataset.num_images, self.anime_dataset.num_images)
 
-        check = 0
-        for test in self.real_dataloader:
-            check += 1
-        print(check)
-
         # use frozen VGG19
         vgg_model_name = 'vgg19_bn'
         self.vgg = VGG.from_pretrained(vgg_model_name)
@@ -205,7 +200,6 @@ class AnimeGANv2(object) :
                 
                 fake = self.generator(real)
                 generated_logit = self.discriminator(fake)
-
                 assert fake.shape[1] == 3 and generated_logit.shape[1] == 1, \
                         'Generated Image shape input error, shape : {}'.format(str(list(fake.shape)))
 
@@ -238,7 +232,7 @@ class AnimeGANv2(object) :
                         
                         anime_logit = self.discriminator(anime)
                         anime_gray_logit = self.discriminator(anime_gray)
-                        # generated_logit = self.discriminator(fake)
+                        generated_logit = self.discriminator(fake.detach())
                         smooth_logit = self.discriminator(anime_smooth)
 
                         assert anime_logit.shape[1] == 1 and anime_gray_logit.shape[1] == 1 and generated_logit.shape[1] == 1 and smooth_logit.shape[1] == 1, \
@@ -255,13 +249,16 @@ class AnimeGANv2(object) :
 
                     optimizer_G.zero_grad()
 
+                    generated_logit = self.discriminator(fake)
                     c_loss, s_loss = con_sty_loss(self.vgg, real, anime_gray, fake)
                     tv_loss = self.tv_weight * total_variation_loss(fake)
                     t_loss = self.con_weight * c_loss + self.sty_weight * s_loss + color_loss(real, fake) * self.color_weight + tv_loss
                     g_loss = self.g_adv_weight * generator_loss(self.gan_type, generated_logit)
 
+                    print(t_loss, g_loss)
                     g_total_loss =  t_loss + g_loss
                     
+                    print(g_total_loss)
                     g_total_loss.backward()
                     optimizer_G.step()
                     
@@ -279,7 +276,7 @@ class AnimeGANv2(object) :
 
                     if (idx + 1) % 200 == 0:
                         mean_loss.clear()
-
+                    
                     j = j - 1
                     if j < 1:
                         j = self.training_rate
@@ -298,6 +295,7 @@ class AnimeGANv2(object) :
                 for i, sample_file in enumerate(val_files):
                     print('val: '+ str(i) + sample_file)
                     sample_image = np.asarray(load_test_data(sample_file, self.img_size))
+                    print('val image : ', sample_image.shape)
                     assert sample_image.shape[1] == 3, 'Sample images shape is not correct'
                     
                     test_real = sample_image
@@ -310,7 +308,7 @@ class AnimeGANv2(object) :
                     save_images(test_real, save_path+'{:03d}_a.jpg'.format(i), None)
                     save_images(test_generated, save_path+'{:03d}_b.jpg'.format(i), None)
                 self.generator.train()
-                    
+
 
     @property
     def model_dir(self):

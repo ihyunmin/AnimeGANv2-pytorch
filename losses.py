@@ -62,7 +62,7 @@ def total_variation_loss(inputs):
     size_dh = inputs.shape[2]
     size_dw = inputs.shape[3]
 
-    return l2loss_dh / size_dh, l2loss_dw / size_dw
+    return l2loss_dh / size_dh + l2loss_dw / size_dw
 
 def color_loss(real, fake):
     real = rgb_to_yuv(real)

@@ -3,3 +3,6 @@ dataset/*
 
 # .pth file
 *.pth
+
+# .jpg file
+*.jpg

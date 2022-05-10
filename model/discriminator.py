@@ -5,6 +5,15 @@ import numpy as np
 
 # sn 은 spectral norm을 뜻함
 
+class LayerNorm(nn.Module):
+    def __init__(self, channel, height, width):
+        super(LayerNorm, self).__init__()
+
+        self.layer_norm = torch.nn.LayerNorm([channel, height, width]).cuda()
+    
+    def forward(self, input):
+        return self.layer_norm(input)
+
 class ConvLReLU(nn.Module):
     def __init__(self, i_channels ,o_channels, kernel, stride, pad, layer_norm_bool=False, lrelu=True):
         super(ConvLReLU, self).__init__()
@@ -30,6 +39,7 @@ class ConvLReLU(nn.Module):
         self.spectral_norm_conv = torch.nn.utils.spectral_norm(conv2d)
         self.layer_norm_bool = layer_norm_bool
         self.lrelu = lrelu
+        self.layer_norm = nn.GroupNorm(num_groups=1, num_channels=o_channels, affine=True)
         self.lrelu_func = torch.nn.LeakyReLU(0.2)
 
     def forward(self, input):
@@ -42,8 +52,7 @@ class ConvLReLU(nn.Module):
         x = self.spectral_norm_conv(x)
         
         if self.layer_norm_bool:
-            layer_norm = torch.nn.LayerNorm(x.shape[1:]).cuda()
-            x = layer_norm(x)
+            x = self.layer_norm(x)
         if self.lrelu:
             x = self.lrelu_func(x)  
         return x

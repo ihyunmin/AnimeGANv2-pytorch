@@ -1,3 +1,4 @@
+from calendar import c
 from tools.utils import *
 from glob import glob
 import time
@@ -80,9 +81,15 @@ class AnimeGANv2(object) :
         # dataset number? why it is max?
         self.dataset_num = max(self.real_dataset.num_images, self.anime_dataset.num_images)
 
+        check = 0
+        for test in self.real_dataloader:
+            check += 1
+        print(check)
+
         # use frozen VGG19
         vgg_model_name = 'vgg19_bn'
         self.vgg = VGG.from_pretrained(vgg_model_name)
+        self.vgg.cuda()
         
         for child in self.vgg.children():
             for param in child.parameters():
@@ -144,6 +151,24 @@ class AnimeGANv2(object) :
         self.generator = Generator().cuda()
         self.discriminator = Discriminator().cuda()
 
+    def get_images(self):
+        try:    
+            anime_images = next(self.anime_sampler)
+        except StopIteration:
+            self.anime_sampler = iter(self.anime_dataloader)
+            anime_images = next(self.anime_sampler)
+        try:
+            anime_smooth_images = next(self.anime_smooth_sampler)
+        except StopIteration:
+            self.anime_smooth_sampler = iter(self.anime_smooth_dataloader)
+            anime_smooth_images = next(self.anime_sampler)
+        try:
+            real_images = next(self.real_sampler)
+        except StopIteration:
+            self.real_sampler = iter(self.real_dataloader)
+            real_images = next(self.real_sampler)
+        
+        return anime_images, anime_smooth_images, real_images
 
     def train(self):
         
@@ -166,13 +191,14 @@ class AnimeGANv2(object) :
 
         for epoch in range(start_epoch, self.epoch):
             for idx in range(int(self.dataset_num / self.batch_size)):
-                anime_images, anime_smooth_images, real_images = next(self.anime_sampler), next(self.anime_smooth_sampler), next(self.real_sampler)
+
+                anime_images, anime_smooth_images, real_images = self.get_images()
+                # anime_images, anime_smooth_images, real_images = self.anime_dataloader[idx], self.anime_smooth_dataloader[idx], self.real_dataloader[idx]
                 
                 real = real_images[0].cuda()
                 anime = anime_images[0].cuda()
                 anime_gray = anime_images[1].cuda()
                 anime_smooth = anime_smooth_images[1].cuda()
-                
                 
                 assert real.shape[1] == 3 and anime.shape[1] == 3 and anime_gray.shape[1] == 3 and anime_smooth.shape[1] == 3, \
                         'Image shape input error, shape : {}'.format(str(list(real.shape)))
@@ -191,7 +217,6 @@ class AnimeGANv2(object) :
                     optimizer_G.zero_grad()
 
                     assert real.shape == fake.shape, 'Real and Fake have to same shape each other'
-                    print('here?')
                     content_loss = con_loss(self.vgg, real, fake)
                     
                     print(content_loss, type(content_loss))
@@ -223,7 +248,6 @@ class AnimeGANv2(object) :
                         print(d_loss, type(d_loss))
                         assert type(d_loss.item()) is float, 'd_loss must be float'
 
-                        break
                         d_loss.backward()
                         optimizer_D.step()
 
@@ -259,7 +283,6 @@ class AnimeGANv2(object) :
                     j = j - 1
                     if j < 1:
                         j = self.training_rate
-
 
             if (epoch + 1) >= self.init_epoch and np.mod(epoch + 1, self.save_freq) == 0:
                 self.save(self.checkpoint_dir, epoch)

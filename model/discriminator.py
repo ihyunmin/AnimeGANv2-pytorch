@@ -25,7 +25,7 @@ class ConvLReLU(nn.Module):
         self.o_channels = o_channels
         
         conv2d = nn.Conv2d(i_channels,o_channels, kernel,stride=stride)
-        print('conv2d', conv2d)
+
         nn.init.normal_(conv2d.weight, mean=0, std=0.02)
         self.spectral_norm_conv = torch.nn.utils.spectral_norm(conv2d)
         self.layer_norm_bool = layer_norm_bool

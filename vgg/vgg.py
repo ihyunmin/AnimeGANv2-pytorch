@@ -62,11 +62,28 @@ class VGG(nn.Module):
                 nn.init.normal_(m.weight, 0, 0.01)
                 nn.init.constant_(m.bias, 0)
 
-    # conv5_4 의 feature를 내보내고 있음.
+                
+                
+
+    # conv4_4 의 feature를 내보내고 있음.
     def extract_features(self, inputs):
-        """ Returns output of the final convolution layer """
-        x = self.features(inputs)
+        
+        x = inputs
+        check = False
+        for _ ,layer in enumerate(self.children()):
+            for name, layer2 in enumerate(layer.children()):
+                x = layer2(x)
+                if str(name) == '36':
+                    check = True
+                    break
+            if check:
+                break
         return x
+        
+        """ Returns output of the final convolution layer """
+        # inputs isn't [B, 3, 224, 224] size, but it's okay, because extract_features don't use the classfier layer.
+        # x = self.features(inputs)
+        
 
     def forward(self, x):
         x = self.features(x)
@@ -84,7 +101,7 @@ class VGG(nn.Module):
     @classmethod
     def from_pretrained(cls, model_name, num_classes=1000):
         model = cls.from_name(model_name, override_params={'num_classes': num_classes})
-        load_pretrained_weights(model, model_name, load_fc=(num_classes == 1000))
+        model = load_pretrained_weights(model, model_name, load_fc=(num_classes == 1000))
         return model
 
     # @classmethod

@@ -213,7 +213,6 @@ class AnimeGANv2(object) :
                     assert real.shape == fake.shape, 'Real and Fake have to same shape each other'
                     content_loss = con_loss(self.vgg, real, fake)
                     
-                    print(content_loss, type(content_loss))
                     assert type(content_loss.item()) is float, 'con_loss must be float'
                     
                     content_loss.backward()
@@ -230,16 +229,17 @@ class AnimeGANv2(object) :
                         # Update D
                         optimizer_D.zero_grad()
                         
+                        fake = self.generator(real)
+                        generated_logit = self.discriminator(fake)
                         anime_logit = self.discriminator(anime)
                         anime_gray_logit = self.discriminator(anime_gray)
-                        generated_logit = self.discriminator(fake.detach())
                         smooth_logit = self.discriminator(anime_smooth)
 
                         assert anime_logit.shape[1] == 1 and anime_gray_logit.shape[1] == 1 and generated_logit.shape[1] == 1 and smooth_logit.shape[1] == 1, \
                                 'Discriminator logits shape must be (B, 1, ?, ?) , shape : {}'.format(str(list(anime_logit.shape)))
 
                         d_loss = self.d_adv_weight * discriminator_loss(self.gan_type, anime_logit, anime_gray_logit, generated_logit, smooth_logit) + self.GP
-                        print(d_loss, type(d_loss))
+                        # print(d_loss, type(d_loss))
                         assert type(d_loss.item()) is float, 'd_loss must be float'
 
                         d_loss.backward()
@@ -248,17 +248,20 @@ class AnimeGANv2(object) :
                     # Update G
 
                     optimizer_G.zero_grad()
-
+                    
+                    fake = self.generator(real)
                     generated_logit = self.discriminator(fake)
-                    c_loss, s_loss = con_sty_loss(self.vgg, real, anime_gray, fake)
+                    c_loss, s_loss = con_sty_loss(self.vgg, real, anime, fake)
                     tv_loss = self.tv_weight * total_variation_loss(fake)
                     t_loss = self.con_weight * c_loss + self.sty_weight * s_loss + color_loss(real, fake) * self.color_weight + tv_loss
                     g_loss = self.g_adv_weight * generator_loss(self.gan_type, generated_logit)
 
-                    print(t_loss, g_loss)
+
+
+                    # print(t_loss, g_loss)
                     g_total_loss =  t_loss + g_loss
                     
-                    print(g_total_loss)
+                    # print(g_total_loss)
                     g_total_loss.backward()
                     optimizer_G.step()
                     
@@ -293,9 +296,9 @@ class AnimeGANv2(object) :
                 self.generator.eval()
 
                 for i, sample_file in enumerate(val_files):
-                    print('val: '+ str(i) + sample_file)
+                    print('val '+ str(i) + 'th image : ' +sample_file)
                     sample_image = np.asarray(load_test_data(sample_file, self.img_size))
-                    print('val image : ', sample_image.shape)
+                    # print('val image : ', sample_image.shape)
                     assert sample_image.shape[1] == 3, 'Sample images shape is not correct'
                     
                     test_real = sample_image
@@ -304,7 +307,7 @@ class AnimeGANv2(object) :
                     with torch.no_grad():
                         test_generated = self.generator(test_image)
                         test_generated = test_generated.cpu().numpy()
-                    print(type(test_real), type(test_generated))
+                        
                     save_images(test_real, save_path+'{:03d}_a.jpg'.format(i), None)
                     save_images(test_generated, save_path+'{:03d}_b.jpg'.format(i), None)
                 self.generator.train()
@@ -340,13 +343,17 @@ class AnimeGANv2(object) :
         for pth_name in pth_files:
             pth_path = os.path.join(checkpoint_dir, pth_name)
             print(pth_path)
-            epoch = pth_path.split('.')[0].split('_')[1]
-            if pth_name.split('_')[0] == 'generator':
-                self.generator.load_state_dict(torch.load(pth_path, map_location='cuda'))
-            else:
-                self.discriminator.load_state_dict(torch.load(pth_path, map_location='cuda'))
+            try:
+                now_epoch = pth_path.split('.')[0].split('_')[1]
+                if epoch < int(now_epoch):
+                    epoch = int(now_epoch)
+                    if pth_name.split('_')[0] == 'generator':
+                        self.generator.load_state_dict(torch.load(pth_path, map_location='cuda'))
+                    else:
+                        self.discriminator.load_state_dict(torch.load(pth_path, map_location='cuda'))
+            except:
+                continue
                 
-            
         start_epoch = int(epoch)
         self.generator.train()
         self.discriminator.train()

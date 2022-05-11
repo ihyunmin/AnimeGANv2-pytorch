@@ -22,7 +22,7 @@ def con_sty_loss(vgg, real, anime, fake):
 
     real_feature_map = vgg.extract_features(real)
     fake_feature_map = vgg.extract_features(fake)
-    anime_feature_map = vgg.extract_features(anime[:fake_feature_map.shape[0]])
+    anime_feature_map = vgg.extract_features(anime[:fake.shape[0]])
 
     c_loss = L1_loss(real_feature_map, fake_feature_map)
     s_loss = style_loss(anime_feature_map, fake_feature_map)
@@ -65,10 +65,11 @@ def total_variation_loss(inputs):
     return l2loss_dh / size_dh + l2loss_dw / size_dw
 
 def color_loss(real, fake):
-    real = rgb_to_yuv(real)
-    fake = rgb_to_yuv(fake)
+    real_yuv = rgb_to_yuv(real)
+    fake_yuv = rgb_to_yuv(fake)
 
-    return  L1_loss(real[:,:,:,0], fake[:,:,:,0]) + Huber_loss(real[:,:,:,1],fake[:,:,:,1]) + Huber_loss(real[:,:,:,2],fake[:,:,:,2])
+    # yuv -> y is bright, u,v is color.
+    return  L1_loss(real_yuv[:,0,:,:], fake_yuv[:,0,:,:]) + Huber_loss(real_yuv[:,1,:,:],fake_yuv[:,1,:,:]) + Huber_loss(real_yuv[:,2,:,:],fake_yuv[:,2,:,:])
 
 def rgb_to_yuv(image: torch.Tensor) -> torch.Tensor:
     r"""Convert an RGB image to YUV.
@@ -159,6 +160,6 @@ def discriminator_loss(loss_func, real, gray, generated, real_blur):
     # for Paprika : 1.0, 1.0, 1.0, 0.005
     # for Shinkai: 1.7, 1.7, 1.7, 1.0
 
-    loss = 1.7 * real_loss +  1.7 * fake_loss + 1.7 * gray_loss  +  1.0 * real_blur_loss
+    loss = 1.2 * real_loss +  1.2 * fake_loss + 1.2 * gray_loss  +  0.8 * real_blur_loss
 
     return loss

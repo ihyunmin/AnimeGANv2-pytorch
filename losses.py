@@ -162,4 +162,4 @@ def discriminator_loss(loss_func, real, gray, generated, real_blur):
 
     loss = 1.2 * real_loss +  1.2 * fake_loss + 1.2 * gray_loss  +  0.8 * real_blur_loss
 
-    return loss
+    return loss, real_loss, gray_loss, fake_loss, real_blur_loss

@@ -41,6 +41,7 @@ def inverse_transform(images):
     return images.astype(np.uint8)
 
 def imsave(images, path):
+    # return cv2.imwrite(path, images)
     return cv2.imwrite(path, cv2.cvtColor(images, cv2.COLOR_BGR2RGB))
 
 def read_img(image_path):

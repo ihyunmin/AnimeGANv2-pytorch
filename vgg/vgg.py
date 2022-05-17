@@ -66,14 +66,53 @@ class VGG(nn.Module):
                 
 
     # conv4_4 의 feature를 내보내고 있음.
+    # VGG19 (
+    # (features): Sequential(
+    #     (0): Conv2d(3, 64, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1))
+    #     (1): ReLU(inplace=True)
+    #     (2): Conv2d(64, 64, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1))
+    #     (3): ReLU(inplace=True)
+    #     (4): MaxPool2d(kernel_size=2, stride=2, padding=0, dilation=1, ceil_mode=False)
+    #     (5): Conv2d(64, 128, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1))
+    #     (6): ReLU(inplace=True)
+    #     (7): Conv2d(128, 128, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1))
+    #     (8): ReLU(inplace=True)
+    #     (9): MaxPool2d(kernel_size=2, stride=2, padding=0, dilation=1, ceil_mode=False)
+    #     (10): Conv2d(128, 256, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1))
+    #     (11): ReLU(inplace=True)
+    #     (12): Conv2d(256, 256, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1))
+    #     (13): ReLU(inplace=True)
+    #     (14): Conv2d(256, 256, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1))
+    #     (15): ReLU(inplace=True)
+    #     (16): Conv2d(256, 256, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1))
+    #     (17): ReLU(inplace=True)
+    #     (18): MaxPool2d(kernel_size=2, stride=2, padding=0, dilation=1, ceil_mode=False)
+    #     (19): Conv2d(256, 512, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1))
+    #     (20): ReLU(inplace=True)
+    #     (21): Conv2d(512, 512, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1))
+    #     (22): ReLU(inplace=True)
+    #     (23): Conv2d(512, 512, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1))
+    #     (24): ReLU(inplace=True)
+    #     (25): Conv2d(512, 512, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1))
+    #     (26): ReLU(inplace=True)
+    #     (27): MaxPool2d(kernel_size=2, stride=2, padding=0, dilation=1, ceil_mode=False)
+    #     (28): Conv2d(512, 512, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1))
+    #     (29): ReLU(inplace=True)
+    #     (30): Conv2d(512, 512, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1))
+    #     (31): ReLU(inplace=True)
+    #     (32): Conv2d(512, 512, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1))
+    #     (33): ReLU(inplace=True)
+    #     (34): Conv2d(512, 512, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1))
+    #     (35): ReLU(inplace=True)
+    #     (36): MaxPool2d(kernel_size=2, stride=2, padding=0, dilation=1, ceil_mode=False)
+    # )
     def extract_features(self, inputs):
-        
         x = inputs
         check = False
         for _ ,layer in enumerate(self.children()):
             for name, layer2 in enumerate(layer.children()):
                 x = layer2(x)
-                if str(name) == '36':
+                if str(name) == '25':
                     check = True
                     break
             if check:
@@ -84,7 +123,6 @@ class VGG(nn.Module):
         # inputs isn't [B, 3, 224, 224] size, but it's okay, because extract_features don't use the classfier layer.
         # x = self.features(inputs)
         
-
     def forward(self, x):
         x = self.features(x)
         x = self.avgpool(x)

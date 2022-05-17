@@ -5,14 +5,14 @@ import numpy as np
 
 # sn 은 spectral norm을 뜻함
 
-class LayerNorm(nn.Module):
-    def __init__(self, channel, height, width):
-        super(LayerNorm, self).__init__()
+# class LayerNorm(nn.Module):
+#     def __init__(self, channel, height, width):
+#         super(LayerNorm, self).__init__()
 
-        self.layer_norm = torch.nn.LayerNorm([channel, height, width]).cuda()
+#         self.layer_norm = torch.nn.LayerNorm([channel, height, width])
     
-    def forward(self, input):
-        return self.layer_norm(input)
+#     def forward(self, input):
+#         return self.layer_norm(input)
 
 class ConvLReLU(nn.Module):
     def __init__(self, i_channels ,o_channels, kernel, stride, pad, layer_norm_bool=False, lrelu=True):
@@ -74,8 +74,8 @@ class Discriminator(nn.Module):
         )
 
         self.last_stage = nn.Sequential(
-            ConvLReLU(256, 512, kernel=3, stride=1, pad=1, layer_norm_bool=True),
-            ConvLReLU(512, 1, kernel=3, stride=1, pad=1, layer_norm_bool=False, lrelu=False)
+            ConvLReLU(256, 256, kernel=3, stride=1, pad=1, layer_norm_bool=True),
+            ConvLReLU(256, 1, kernel=3, stride=1, pad=1, layer_norm_bool=False, lrelu=False)
         )
 
     def forward(self, input):

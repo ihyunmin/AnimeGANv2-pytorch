@@ -3,14 +3,14 @@
 #
 
 import torch
-from vgg import VGG
+from vgg.vgg import VGG
 
 # It isn't able to control the extract layer of the vgg model.
 # It is from the previous layer of fully connected layer.
 def main():
 
     # model load
-    model_name = 'vgg19_bn'
+    model_name = 'vgg19'
     model = VGG.from_pretrained(model_name)
     print(model)
 

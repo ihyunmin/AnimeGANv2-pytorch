@@ -10,6 +10,7 @@ from vgg.vgg import VGG
 from losses import *
 import os
 from torch.utils.data import DataLoader
+from tensor_board import Tensorboard
 
 class AnimeGANv2(object) :
     def __init__(self, args):
@@ -60,19 +61,19 @@ class AnimeGANv2(object) :
                                     dataset=self.real_dataset,
                                     batch_size=self.batch_size,
                                     shuffle=True,
-                                    drop_last=False
+                                    drop_last=True
                                 )
         self.anime_dataloader = DataLoader(
                                     dataset=self.anime_dataset,
                                     batch_size=self.batch_size,
                                     shuffle=True,
-                                    drop_last=False
+                                    drop_last=True
                                 )
         self.anime_smooth_dataloader = DataLoader(
                                     dataset=self.anime_smooth_dataset,
                                     batch_size=self.batch_size,
                                     shuffle=True,
-                                    drop_last=False
+                                    drop_last=True
                                 )
 
         self.anime_sampler = iter(self.anime_dataloader)
@@ -82,13 +83,15 @@ class AnimeGANv2(object) :
         self.dataset_num = max(self.real_dataset.num_images, self.anime_dataset.num_images)
 
         # use frozen VGG19
-        vgg_model_name = 'vgg19_bn'
+        vgg_model_name = 'vgg19'
         self.vgg = VGG.from_pretrained(vgg_model_name)
         self.vgg.cuda()
         
         for child in self.vgg.children():
             for param in child.parameters():
                 param.requires_grad = False
+
+        self.tensorboard = Tensorboard(self.training_rate)
 
         print()
         print("##### Information #####")
@@ -183,17 +186,39 @@ class AnimeGANv2(object) :
 
         optimizer_G = torch.optim.Adam(self.generator.parameters(), lr=self.g_lr, betas=(0.5, 0.999))
         optimizer_D = torch.optim.Adam(self.discriminator.parameters(), lr=self.d_lr, betas=(0.5, 0.999))
-
+        
+        test_path = os.path.join(os.getcwd(), 'test_images')
+        os.makedirs(test_path, exist_ok=True)
+        
         for epoch in range(start_epoch, self.epoch):
-            for idx in range(int(self.dataset_num / self.batch_size)):
-
+            # Class 만들어서 Loss 구할 것.
+            # iters ==> 미리 정한 step으로 나누어떨어지게끔.
+            iters = int(self.dataset_num / self.batch_size) - int(self.dataset_num / self.batch_size) % self.tensorboard.n_steps
+            for idx in range(iters):
                 anime_images, anime_smooth_images, real_images = self.get_images()
                 # anime_images, anime_smooth_images, real_images = self.anime_dataloader[idx], self.anime_smooth_dataloader[idx], self.real_dataloader[idx]
                 
+                """
+                    Data Loader에 문제 있는지 체크
+                """
+                # image_path = os.path.join(test_path, str(epoch) + '_' + str(idx) + '_')
+                # test_real_image = np.transpose(real_images[0][0], (1,2,0))
+                # test_anime_image = np.transpose(anime_images[0][0], (1,2,0))
+                # test_anime_gray_image = np.transpose(anime_images[1][0], (1,2,0))
+                # test_anime_smooth_image = np.transpose(anime_smooth_images[1][0], (1,2,0))
+
+                # print(test_real_image.shape)
+
+                # cv2.imwrite(image_path + 'real_image.jpg', cv2.cvtColor((test_real_image.numpy()+1)*255, cv2.COLOR_BGR2RGB))
+                # cv2.imwrite(image_path + 'anime_image.jpg', cv2.cvtColor((test_anime_image.numpy()+1)*255, cv2.COLOR_BGR2RGB))
+                # cv2.imwrite(image_path + 'anime_gray_image.jpg', cv2.cvtColor((test_anime_gray_image.numpy()+1)*255, cv2.COLOR_BGR2RGB))
+                # cv2.imwrite(image_path + 'anime_smooth_image.jpg', cv2.cvtColor((test_anime_smooth_image.numpy()+1)*255, cv2.COLOR_BGR2RGB))
+
                 real = real_images[0].cuda()
                 anime = anime_images[0].cuda()
                 anime_gray = anime_images[1].cuda()
                 anime_smooth = anime_smooth_images[1].cuda()
+
                 
                 assert real.shape[1] == 3 and anime.shape[1] == 3 and anime_gray.shape[1] == 3 and anime_smooth.shape[1] == 3, \
                         'Image shape input error, shape : {}'.format(str(list(real.shape)))
@@ -218,13 +243,16 @@ class AnimeGANv2(object) :
                     content_loss.backward()
                     optimizer_G.step()
                     init_mean_loss.append(content_loss.item())
+                    
+                    self.tensorboard.step_one(init_con_loss=content_loss.item())
 
-                    print("Epoch: %3d Step: %5d / %5d  time: %f s init_con_loss: %.8f  mean_con_loss: %.8f" % (epoch, idx,int(self.dataset_num / self.batch_size), time.time() - start_time, content_loss, np.mean(init_mean_loss)))
+                    print("Epoch: %3d Step: %5d / %5d  time: %f s init_con_loss: %.8f  mean_con_loss: %.8f" % (epoch, idx, iters, time.time() - start_time, content_loss, np.mean(init_mean_loss)))
                     if (idx+1)%200 ==0:
                         init_mean_loss.clear()
                 else :
                     start_time = time.time()
 
+                    d_loss, real_loss, gray_loss, fake_loss, real_blur_loss = 0.0, 0.0, 0.0, 0.0, 0.0
                     if j == self.training_rate:
                         # Update D
                         optimizer_D.zero_grad()
@@ -237,8 +265,10 @@ class AnimeGANv2(object) :
 
                         assert anime_logit.shape[1] == 1 and anime_gray_logit.shape[1] == 1 and generated_logit.shape[1] == 1 and smooth_logit.shape[1] == 1, \
                                 'Discriminator logits shape must be (B, 1, ?, ?) , shape : {}'.format(str(list(anime_logit.shape)))
+                        
+                        sum_loss, real_loss, gray_loss, fake_loss, real_blur_loss = discriminator_loss(self.gan_type, anime_logit, anime_gray_logit, generated_logit, smooth_logit)
 
-                        d_loss = self.d_adv_weight * discriminator_loss(self.gan_type, anime_logit, anime_gray_logit, generated_logit, smooth_logit) + self.GP
+                        d_loss = self.d_adv_weight * sum_loss + self.GP
                         # print(d_loss, type(d_loss))
                         assert type(d_loss.item()) is float, 'd_loss must be float'
 
@@ -251,12 +281,11 @@ class AnimeGANv2(object) :
                     
                     fake = self.generator(real)
                     generated_logit = self.discriminator(fake)
-                    c_loss, s_loss = con_sty_loss(self.vgg, real, anime, fake)
+                    c_loss, s_loss = con_sty_loss(self.vgg, real, anime_gray, fake)
                     tv_loss = self.tv_weight * total_variation_loss(fake)
-                    t_loss = self.con_weight * c_loss + self.sty_weight * s_loss + color_loss(real, fake) * self.color_weight + tv_loss
+                    col_loss = color_loss(real,fake)
+                    t_loss = self.con_weight * c_loss + self.sty_weight * s_loss + col_loss * self.color_weight + tv_loss
                     g_loss = self.g_adv_weight * generator_loss(self.gan_type, generated_logit)
-
-
 
                     # print(t_loss, g_loss)
                     g_total_loss =  t_loss + g_loss
@@ -267,15 +296,19 @@ class AnimeGANv2(object) :
                     
                     mean_loss.append([d_loss.item(), g_loss.item()])
 
+                    self.tensorboard.step_one(main_con_loss=c_loss.item() * self.con_weight, style_loss=s_loss.item() * self.sty_weight, real_d_loss=real_loss.item(), gray_d_loss=gray_loss.item(), \
+                                                fake_d_loss=fake_loss.item(), real_blur_d_loss=real_blur_loss.item(), d_loss=d_loss.item(), tv_loss=tv_loss.item() * self.tv_weight, \
+                                                color_loss=col_loss.item() * self.color_weight, g_loss = g_loss.item())
+
                     if j == self.training_rate:
                         print(
                             "Epoch: %3d Step: %5d / %5d  time: %f s d_loss: %.8f, g_loss: %.8f -- mean_d_loss: %.8f, mean_g_loss: %.8f" % (
-                                epoch, idx, int(self.dataset_num / self.batch_size), time.time() - start_time, d_loss, g_loss, np.mean(mean_loss, axis=0)[0],
+                                epoch, idx, iters, time.time() - start_time, d_loss, g_loss, np.mean(mean_loss, axis=0)[0],
                                 np.mean(mean_loss, axis=0)[1]))
                     else:
                         print(
                             "Epoch: %3d Step: %5d / %5d time: %f s , g_loss: %.8f --  mean_g_loss: %.8f" % (
-                                epoch, idx, int(self.dataset_num / self.batch_size), time.time() - start_time, g_loss, np.mean(mean_loss, axis=0)[1]))
+                                epoch, idx, iters, time.time() - start_time, g_loss, np.mean(mean_loss, axis=0)[1]))
 
                     if (idx + 1) % 200 == 0:
                         mean_loss.clear()
@@ -289,11 +322,11 @@ class AnimeGANv2(object) :
 
             if epoch >= self.init_epoch -1:
                 """ Result Image """
-                val_files = glob('./dataset/{}/*.*'.format('val'))
+                val_files = sorted(glob('./dataset/{}/*.*'.format('val')))
                 save_path = './{}/{:03d}/'.format(self.sample_dir, epoch)
                 check_folder(save_path)
                 
-                self.generator.eval()
+                # self.generator.eval()
 
                 for i, sample_file in enumerate(val_files):
                     print('val '+ str(i) + 'th image : ' +sample_file)
@@ -310,7 +343,8 @@ class AnimeGANv2(object) :
                         
                     save_images(test_real, save_path+'{:03d}_a.jpg'.format(i), None)
                     save_images(test_generated, save_path+'{:03d}_b.jpg'.format(i), None)
-                self.generator.train()
+                # self.generator.train()
+        self.tensorboard.close()
 
 
     @property

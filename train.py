@@ -2,7 +2,6 @@ from AnimeGANv2 import AnimeGANv2
 import argparse
 import os
 from tools.utils import check_folder
-import torch
 
 def parse_args():
     desc = "AnimeGANv2"

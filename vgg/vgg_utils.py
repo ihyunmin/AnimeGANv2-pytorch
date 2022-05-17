@@ -88,6 +88,7 @@ def get_model_params(model_name, override_params):
 # }
 
 model_map = {
+    "vgg19" : os.path.join(os.getcwd(), 'vgg', 'vgg19-dcbb9e9d.pth'),
     "vgg19_bn" : os.path.join(os.getcwd(), 'vgg', 'vgg19_bn-c79401a0.pth')
 }
 

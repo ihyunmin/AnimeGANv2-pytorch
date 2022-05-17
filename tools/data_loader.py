@@ -1,6 +1,5 @@
 import os
-import tensorflow as tf
-import cv2,random
+import cv2
 import numpy as np
 from torch.utils.data import Dataset
 
@@ -13,7 +12,9 @@ class ImageDataset(Dataset):
 
     def get_image_paths_train(self, image_dir):
         paths = []
-        for path in os.listdir(image_dir):
+        path_list = os.listdir(image_dir)
+        path_list.sort()
+        for path in path_list:
             # Check extensions of filename
             if path.split('.')[-1] not in ['jpg', 'jpeg', 'png', 'gif']:
                 continue

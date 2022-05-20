@@ -281,7 +281,7 @@ class AnimeGANv2(object) :
                     
                     fake = self.generator(real)
                     generated_logit = self.discriminator(fake)
-                    c_loss, s_loss = con_sty_loss(self.vgg, real, anime_gray, fake)
+                    c_loss, s_loss = con_sty_loss(self.vgg, real, anime, fake)
                     tv_loss = self.tv_weight * total_variation_loss(fake)
                     col_loss = color_loss(real,fake)
                     t_loss = self.con_weight * c_loss + self.sty_weight * s_loss + col_loss * self.color_weight + tv_loss

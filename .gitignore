@@ -9,3 +9,6 @@ dataset/*
 
 # bash file
 *.sh
+
+# chrome driver
+chromedriver

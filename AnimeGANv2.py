@@ -159,7 +159,7 @@ class AnimeGANv2(object) :
             anime_smooth_images = next(self.anime_smooth_sampler)
         except StopIteration:
             self.anime_smooth_sampler = iter(self.anime_smooth_dataloader)
-            anime_smooth_images = next(self.anime_sampler)
+            anime_smooth_images = next(self.anime_smooth_sampler)
         try:
             real_images = next(self.real_sampler)
         except StopIteration:

@@ -33,6 +33,7 @@ def train_model(iter):
         pred = model(x)
         loss = criterion(y, pred)
         loss2  = criterion2(y, pred)
+        writer.add_scalar('Loss/test', loss, epoch)
         writer.add_scalars('Loss/train', {'L2Loss':loss,
                                          'L1Loss':loss2}, epoch)        
         loss.backward()

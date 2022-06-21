@@ -12,3 +12,9 @@ dataset/*
 
 # chrome driver
 chromedriver
+
+# dragonball style
+dragonball/*
+
+# polygonart style
+polygonart/*

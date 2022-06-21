@@ -7,6 +7,9 @@ dataset/*
 # .jpg file
 *.jpg
 
+# .png file
+*.png
+
 # bash file
 *.sh
 
